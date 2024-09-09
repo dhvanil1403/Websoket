@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client <%= clientId %></title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <h1>Client <%= clientId %></h1>
+  <div id="status">Connecting...</div>
+  <div id="network-status">Checking network...</div>
+  <div id="last-message">No messages received yet.</div>
+
+  <script>
+    const clientId = '<%= clientId %>';
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/${clientId}`;
+    const ws = new WebSocket(wsUrl);
+    const statusDiv = document.getElementById('status');
+    const networkStatusDiv = document.getElementById('network-status');
+    const lastMessageDiv = document.getElementById('last-message');
+    const pingInterval = 15000; // Ping interval in milliseconds (15 seconds)
+    let isWebSocketOpen = false;
+    let pingTimeout;
+
+    ws.onopen = () => {
+      console.log(`WebSocket opened for client ${clientId}`);
+      statusDiv.textContent = 'Connected';
+      statusDiv.style.color = 'green';
+      isWebSocketOpen = true;
+
+      const connectMessage = {
+        type: 'status',
+        message: `${clientId} connected`,
+        timestamp: new Date().toISOString()
+      };
+      ws.send(JSON.stringify(connectMessage));
+      console.log(`Sent connection message: ${JSON.stringify(connectMessage)}`);
+
+      // Start sending pings
+      sendPing();
+    };
+
+    ws.onclose = () => {
+      console.log(`WebSocket closed for client ${clientId}`);
+      statusDiv.textContent = 'Disconnected';
+      statusDiv.style.color = 'red';
+      isWebSocketOpen = false;
+      clearTimeout(pingTimeout);
+    };
+
+    ws.onerror = (error) => {
+      console.error(`WebSocket error for client ${clientId}:`, error);
+      statusDiv.textContent = 'Error';
+      statusDiv.style.color = 'red';
+      isWebSocketOpen = false;
+      clearTimeout(pingTimeout);
+    };
+
+    ws.onmessage = (event) => {
+      console.log(`WebSocket message received for client ${clientId}:`, event.data);
+      const data = JSON.parse(event.data);
+      const receivedTime = new Date();
+
+      if (data.type === 'status') {
+        lastMessageDiv.textContent = `Status update: Client ${data.clientId} is ${data.status}`;
+        lastMessageDiv.style.color = data.status === 'Connected' ? 'green' : 'red';
+        console.log(`Status update received: Client ${data.clientId} is ${data.status}`);
+      } else {
+        lastMessageDiv.textContent = `Message from server: ${data.message}`;
+        console.log(`Message from server: ${data.message}`);
+      }
+
+      if (data.timestamp) {
+        const sentTime = new Date(data.timestamp);
+        const responseTime = receivedTime - sentTime;
+        console.log(`Response time: ${responseTime} ms`);
+      }
+    };
+
+    function sendPing() {
+      if (isWebSocketOpen) {
+        const pingMessage = {
+          clientId,
+          type: 'ping',
+          message: 'ping',
+          timestamp: new Date().toISOString()
+        };
+        ws.send(JSON.stringify(pingMessage));
+        console.log(`Sent ping message: ${JSON.stringify(pingMessage)}`);
+        pingTimeout = setTimeout(sendPing, pingInterval);
+      }
+    }
+
+    function updateNetworkStatus() {
+      const online = navigator.onLine ? 'online' : 'offline';
+      networkStatusDiv.textContent = `Network status: ${online}`;
+      networkStatusDiv.style.color = online === 'online' ? 'green' : 'red';
+
+      // Queue network status update if WebSocket is not open
+      if (!isWebSocketOpen) {
+        console.log(`WebSocket is not open. Network status will be sent once the connection is established.`);
+        ws.onopen = () => {
+          console.log(`WebSocket opened for client ${clientId}`);
+          statusDiv.textContent = 'Connected';
+          statusDiv.style.color = 'green';
+          isWebSocketOpen = true;
+
+          // Send pending network status
+          const networkStatusMessage = {
+            clientId,
+            type: 'network',
+            status: online,
+            timestamp: new Date().toISOString()
+          };
+          ws.send(JSON.stringify(networkStatusMessage));
+          console.log(`Sent pending network status: ${JSON.stringify(networkStatusMessage)}`);
+        };
+        return;
+      }
+
+      // Send network status to the server
+      const networkStatusMessage = {
+        clientId,
+        type: 'network',
+        status: online,
+        timestamp: new Date().toISOString()
+      };
+      ws.send(JSON.stringify(networkStatusMessage));
+      console.log(`Sent network status: ${JSON.stringify(networkStatusMessage)}`);
+    }
+
+    window.addEventListener('online', () => {
+      console.log('Network status changed to online');
+      updateNetworkStatus();
+    });
+
+    window.addEventListener('offline', () => {
+      console.log('Network status changed to offline');
+      updateNetworkStatus();
+    });
+
+    updateNetworkStatus(); // Initial check
+  </script>
+</body>
+</html>

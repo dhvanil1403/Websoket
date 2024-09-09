@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Status Page</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+      color: #333;
+    }
+    
+    header {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 0;
+      text-align: center;
+    }
+    
+    h1, h2 {
+      color: #4CAF50;
+    }
+    
+    .container {
+      width: 80%;
+      margin: auto;
+      overflow: hidden;
+      padding: 20px;
+      background: white;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    
+    .online {
+      color: green;
+    }
+    
+    .offline {
+      color: red;
+    }
+    
+    .network-online {
+      color: green;
+    }
+    
+    .network-offline {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Status Page</h1>
+  </header>
+  
+  <div class="container">
+    <h2>Client and Network Statuses</h2>
+    <% 
+      function timeSince(dateTime) {
+        const seconds = Math.floor((Date.now() - new Date(dateTime)) / 1000);
+        let interval = Math.floor(seconds / 86400);
+        if (interval >= 1) return interval + " day" + (interval > 1 ? "s" : "") + " ago";
+        
+        interval = Math.floor(seconds / 3600);
+        if (interval >= 1) return interval + " hour" + (interval > 1 ? "s" : "") + " ago";
+        
+        interval = Math.floor(seconds / 60);
+        if (interval >= 1) return interval + " minute" + (interval > 1 ? "s" : "") + " ago";
+        
+        return seconds + " second" + (seconds > 1 ? "s" : "") + " ago";
+      }
+    %>
+    <% if (Object.keys(clientStatuses).length > 0 || Object.keys(networkStatuses).length > 0) { %>
+      <table>
+        <thead>
+          <tr>
+            <th>Client ID</th>
+            <th>Screen Name</th> <!-- Add Screen Name column -->
+            <th>Client Status</th>
+            <th>Last Response Time</th>
+            <th>Network Status</th>
+            <th>Last Network Response Time</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% Object.keys(clientStatuses).forEach(clientId => { %>
+            <tr>
+              <td><strong><%= clientId %></strong></td>
+  
+              <!-- Match screen name with clientId -->
+              <% 
+                const screen = screens.find(screen => screen.screenid == clientId); 
+                if (screen) { 
+              %>
+                <td><%= screen.screenname %></td>
+              <% } else { %>
+                <td>No screen available</td>
+              <% } %>
+  
+              <td class="<%= clientStatuses[clientId].status %>"><%= clientStatuses[clientId].status %></td>
+              <td><%= timeSince(clientStatuses[clientId].dateTime) %></td>
+              <% if (networkStatuses[clientId]) { %>
+                <td class="network-<%= networkStatuses[clientId].status %>"><%= networkStatuses[clientId].status %></td>
+                <td><%= timeSince(networkStatuses[clientId].dateTime) %></td>
+              <% } else { %>
+                <td colspan="2">No network status available</td>
+              <% } %>
+              <td>
+                <button onclick="restartClient('<%= clientId %>')">Restart</button>
+                <button onclick="updateApp('<%= clientId %>')">Update App</button>
+                <button onclick="volumeUp('<%= clientId %>')">Volume Up</button>
+                <button onclick="volumeDown('<%= clientId %>')">Volume Down</button>
+                <button onclick="muteClient('<%= clientId %>')">Mute</button>
+                <button onclick="unmuteClient('<%= clientId %>')">Unmute</button>
+                <button onclick="deleteClient('<%= clientId %>')">Delete</button>
+
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p>No clients or network statuses available at the moment.</p>
+    <% } %>
+  </div>
+  
+  <!-- <script>
+    function restartClient(clientId) {
+      fetch(`/restart-client/${clientId}`, {
+        method: 'POST'
+      })
+      .then(response => response.json())
+      .then(data => alert(data.message))
+      .catch(error => console.error('Error:', error));
+    }
+  </script> -->
+  <!-- <script>
+    function restartClient(clientId) {
+      fetch(`/restart-client/${clientId}`, {
+        method: 'POST'
+      })
+      .then(response => response.json())
+      .then(data => alert(data.message))
+      .catch(error => console.error('Error:', error));
+    }
+  
+    function updateApp(clientId) {
+      fetch(`/update-app/${clientId}`, {
+        method: 'POST'
+      })
+      .then(response => response.json())
+      .then(data => alert(data.message))
+      .catch(error => console.error('Error:', error));
+    }
+  </script> -->
+  <!-- <script>
+    function restartClient(clientId) {
+      fetch(`/restart-client/${clientId}`, {
+        method: 'POST'
+      })
+      .then(response => response.json())
+      .then(data => alert(data.message))
+      .catch(error => console.error('Error:', error));
+    }
+  
+    function updateApp(clientId) {
+      fetch(`/update-app/${clientId}`, {
+        method: 'POST'
+      })
+      .then(response => response.json())
+      .then(data => alert(data.message))
+      .catch(error => console.error('Error:', error));
+    }
+  
+    function volumeUp(clientId) {
+      fetch(`/volume-up/${clientId}`, {
+        method: 'POST'
+      })
+      .then(response => response.json())
+      .then(data => alert(data.message))
+      .catch(error => console.error('Error:', error));
+    }
+  
+    function volumeDown(clientId) {
+      fetch(`/volume-down/${clientId}`, {
+        method: 'POST'
+      })
+      .then(response => response.json())
+      .then(data => alert(data.message))
+      .catch(error => console.error('Error:', error));
+    }
+  </script> -->
+  <script>
+    function restartClient(clientId) {
+      fetch(`/restart-client/${clientId}`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => alert(data.message))
+        .catch(error => console.error('Error:', error));
+    }
+  
+    function updateApp(clientId) {
+      fetch(`/update-app/${clientId}`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => alert(data.message))
+        .catch(error => console.error('Error:', error));
+    }
+  
+    function volumeUp(clientId) {
+      fetch(`/volume-up/${clientId}`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => alert(data.message))
+        .catch(error => console.error('Error:', error));
+    }
+  
+    function volumeDown(clientId) {
+      fetch(`/volume-down/${clientId}`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => alert(data.message))
+        .catch(error => console.error('Error:', error));
+    }
+  
+    function muteClient(clientId) {
+      fetch(`/mute-client/${clientId}`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => alert(data.message))
+        .catch(error => console.error('Error:', error));
+    }
+  
+    function unmuteClient(clientId) {
+      fetch(`/unmute-client/${clientId}`, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => alert(data.message))
+        .catch(error => console.error('Error:', error));
+    }
+
+    function deleteClient(clientId) {
+  fetch(`/delete-client/${clientId}`, { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+      alert(data.message);
+      // Refresh the page after successful deletion
+      window.location.reload();
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+  </script>
+  
+  
+</body>
+</html>
